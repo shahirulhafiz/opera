@@ -144,7 +144,7 @@ def validate_workflow(path: Path, agents: dict[str, dict], skills: set[str]) -> 
         err(f"{path.name}: workflow has no 'steps' list")
         return
 
-    step_ids = {s.get("id") for s in steps if isinstance(s, dict) and s.get("id") is not None}
+    step_ids = {s.get("id") for s in steps if isinstance(s, dict)}
     for step in steps:
         if not isinstance(step, dict):
             err(f"{path.name}: a step is not a mapping")
