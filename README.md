@@ -10,6 +10,11 @@ orchestrator.
 > This is a starter template. It ships with the engine and a small set of worker
 > agents, but **no concrete workflow** — every request uses the built-in ad-hoc
 > route until you author one.
+>
+> **Using it as a GitHub template:** "Orchestral Harness" is the name of this
+> framework, not your project. Generate a repo from the template and rename it
+> freely — the startup onboarding derives your project's name at runtime from the
+> folder, so nothing is hardcoded.
 
 ## How to use it
 

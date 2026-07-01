@@ -1,0 +1,6 @@
+# Editor — personal, machine-specific settings (keep the file locally, don't commit it)
+.vscode/settings.json
+
+# Python
+__pycache__/
+*.py[cod]
