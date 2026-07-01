@@ -1,0 +1,9 @@
+---
+description: Load the shared Agentic Factory Runtime Policy from CLAUDE.md so Cursor and Claude Code stay in sync
+alwaysApply: true
+---
+
+The project's operating policy lives in `CLAUDE.md` (single source of truth,
+also consumed by Claude Code). Follow it in full.
+
+@CLAUDE.md
