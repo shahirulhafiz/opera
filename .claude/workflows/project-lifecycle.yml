@@ -56,13 +56,27 @@ agents:
 
   planner:
     type: planning
-    purpose: Implementation plans
-    when_to_use: Preparing for phase implementation
+    purpose: Implementation plans & task breakdown
+    when_to_use: Preparing for phase implementation, or breaking an approved plan into tasks
     invocation: |
       Task(subagent_type="planner", prompt="Create implementation plan for phase {NN}")
-    skills: [implementation-plan, issues-clarification]
+    skills: [implementation-plan, task-breakdown, issues-clarification]
     outputs:
       - "docs/plans/phase-{NN}-implementation-plan.md"
+      - "docs/plans/phase-{NN}-task-breakdown.md"
+
+  plan-reviewer:
+    type: planning
+    purpose: Review plans before execution
+    when_to_use: After a plan is drafted and before task breakdown / implementation
+    invocation: |
+      Task(subagent_type="plan-reviewer", prompt="Review the phase {NN} implementation plan")
+    skills: [review-plan]
+    workflow: dev-cycle.yml
+    capabilities:
+      - Read-only audit of plan vs spec (no edits)
+      - Coverage, feasibility, sequencing, and testability checks
+      - Verdict: APPROVE / APPROVE WITH CHANGES / REVISE
 
   implementer:
     type: planning

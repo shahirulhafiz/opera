@@ -22,6 +22,31 @@ Escalate to **Full profile** only for:
 - Full phase implementation and verification
 - Explicit user request for full pipeline behavior
 
+## Development Cycle Harness (hands-off orchestration)
+
+The user should never have to name an agent or a skill. When the user describes a
+feature, change, or bug fix, YOU orchestrate the cycle automatically by delegating to
+subagents by role. Skills load themselves (each subagent preloads its own via the
+`skills:` frontmatter field) — never ask the user to invoke a skill or memory manually.
+
+**Cycle** (defined in `.claude/workflows/dev-cycle.yml`):
+
+1. `planner` → draft the implementation plan (`implementation-plan` skill).
+2. `plan-reviewer` → gate the plan. On `REVISE`, loop back to `planner` (max 3). On `APPROVE` / `APPROVE WITH CHANGES`, continue.
+3. `planner` → break the approved plan into tasks (`task-breakdown` skill).
+4. `implementer` → execute tasks in order (`execute-plan` skill).
+5. `code-reviewer` + `test-expert` → review and test in parallel.
+6. `debugger` → fix any issues found; loop back to step 5 until code review is clean and tests pass.
+
+**Harness rules:**
+- Auto-delegate. Do not ask "which agent/skill should I use?" — infer it from the request and this cycle.
+- Right-size the cycle:
+  - Trivial one-line / single-file edit → execute directly (Lean profile), skip the ceremony.
+  - Multi-file or feature/bug work → run the full cycle above.
+- Run steps 5–6 automatically after execution; do not wait to be asked to review or test.
+- Only pause for the user at genuine decision points: a `plan-reviewer` blocker needing a product/scope decision, destructive actions, or ambiguous requirements.
+- Announce the current step briefly as you go (e.g. "Planning → Plan review → …") so the flow is visible without the user driving it.
+
 ## Invocation Guardrails
 
 - Do not trigger `phase-manager` or `completion-report` for routine fixes unless requested.

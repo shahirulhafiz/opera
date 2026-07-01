@@ -95,11 +95,15 @@ Use placeholders in `input` and `output` paths:
 
 | File | Purpose |
 |------|---------|
-| `project-lifecycle.yml` | **Source of truth** - Agent definitions + project workflow |
+| `project-lifecycle.yml` | **Source of truth** - Agent definitions + full phased project workflow |
+| `dev-cycle.yml` | Lean six-step iterative loop (plan → review plan → breakdown → execute → review code → test) |
 | `full-spec-pipeline.yml` | Specification creation with auto-validation |
 | `implementation-stages.yml` | Code implementation execution order |
 | `completion-rules.yml` | Mandatory completion report triggers |
 | `rules.yml` | Global rules and conventions |
+
+Use `dev-cycle.yml` for everyday feature/task delivery; escalate to `project-lifecycle.yml`
+(spec-writer, phase-manager, completion reports) only for full phases or milestones.
 
 ## Agent Definitions
 

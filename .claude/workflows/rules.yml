@@ -58,10 +58,10 @@ rules:
     invocation: |
       Task(subagent_type="debugger", prompt="{user's check request}")
     examples:
-      - "check if the API works" → debugger verifies API functionality
-      - "verify the database connection" → debugger tests DB connectivity
-      - "validate the form inputs" → debugger checks input validation
-      - "test the login flow" → debugger tests authentication flow
+      - '"check if the API works" -> debugger verifies API functionality'
+      - '"verify the database connection" -> debugger tests DB connectivity'
+      - '"validate the form inputs" -> debugger checks input validation'
+      - '"test the login flow" -> debugger tests authentication flow'
 
   completion_reports:
     description: Completion reports for phase-complete work or explicit documentation request
