@@ -1,0 +1,39 @@
+# _template.yml — copy this to `.claude/workflows/{id}.yml` to author a new cycle.
+# Files prefixed `_` are NON-ROUTABLE: the orchestrator and validator skip them,
+# so this template never needs its agents/skills to exist.
+#
+# After copying: fill in `match` + `steps`, run the validator on the new file,
+# then add an `enabled` route to `registry.yml` (see the author-workflow skill).
+
+name: Example Cycle
+description: One-line summary of what this cycle accomplishes.
+
+# How the orchestrator routes to this cycle (keyword overlap; higher priority wins ties).
+match:
+  intent: [example, sample, keyword]
+  priority: 10
+
+steps:
+  # A plain step: spawn `agent` (optionally using `skill`) with an action.
+  - id: first
+    agent: implementer          # must be an existing agent under .claude/agents/
+    skill: execute-plan         # optional; must be an existing skill under .claude/skills/
+    action: Do the first thing.
+    output: "docs/plans/adhoc-{slug}-output.md"
+    mandatory: true             # set false to let the fast lane skip this step
+
+  # A gated step: `on_complete` REQUIRES a `verdict_contract` (the exact tokens
+  # the step's agent emits on its final `VERDICT: <token>` line) and `max_retries`.
+  - id: review
+    agent: code-reviewer
+    requires: [first]
+    verdict_contract: ["APPROVE", "REVISE"]
+    max_retries: 2
+    on_complete:
+      APPROVE: { next: done }
+      REVISE: { next: first }
+
+  # Independent steps can run together via `parallel_with`.
+  - id: done
+    agent: test-expert
+    requires: [review]
