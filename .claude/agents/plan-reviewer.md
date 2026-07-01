@@ -31,6 +31,7 @@ Use the `review-plan` skill to audit the drafted plan against its source spec.
 - 🟢 **STRENGTH**: Well-formed parts worth keeping.
 
 End with an explicit verdict: **APPROVE**, **APPROVE WITH CHANGES**, or **REVISE**.
+As the very last line, emit a machine-checkable verdict for the orchestrator to route on, using one of the exact contract tokens: `VERDICT: APPROVE`, `VERDICT: APPROVE WITH CHANGES`, or `VERDICT: REVISE`.
 Reference specific task IDs (DB-1, API-3, etc.) for every finding.
 
 # CRITICAL RULES
