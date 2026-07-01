@@ -1,143 +1,100 @@
-# Workflow Definitions
+# Workflows — the orchestral harness
 
-This directory contains YAML workflow definitions that describe agent orchestration patterns for the project.
+A hands-off orchestration layer over the `.claude/` agents and skills. The user
+describes an outcome in plain language; the **orchestrator** agent routes it to a
+workflow and runs that workflow end-to-end, spawning specialist agents in a
+fixed, gated sequence. No `@agent` or skill tagging. New workflows are added
+declaratively — one YAML file + one registry entry — with **no change to the
+orchestrator**.
 
-## Purpose
+> **How this executes:** this is *not* a compiled engine. `registry.yml`, the
+> workflow YAMLs, and fields like `match`, `on_complete`, and `max_retries` are
+> conventions the `orchestrator` (an LLM) reads and follows via its prompt. The
+> only deterministic guarantee is the `validate-config` **script**.
 
-Workflows define:
-- **Step sequences** - Ordered steps with dependencies
-- **Agent assignments** - Which agent handles each step
-- **Auto-continuation** - Steps that run automatically after others
-- **Triggers** - Events that invoke workflows or steps
-- **Output locations** - Where artifacts are created
+## Files
 
-## Schema Reference
+| File | Role |
+|------|------|
+| `registry.yml` | Routing source of truth: `id`, `workflow`, `description`, `match.intent`, `priority`, `enabled`, plus `fallback: adhoc`. Ships with **no routes** — every request uses the ad-hoc fallback until you author a cycle. |
+| `_template.yml` | Copy-to-create a new cycle. `_`-prefixed files are **non-routable**. |
 
-### Workflow File Structure
+No concrete workflow ships by default; author one with the `workflow-author`
+agent (or by hand from `_template.yml`). Agents live in `.claude/agents/`;
+skills in `.claude/skills/`. The `validate-config` skill bundles the validator
+script.
+
+## Routing (selection algorithm)
+
+1. User names a workflow/route explicitly → use it.
+2. Otherwise score each `enabled` route by `match.intent` overlap with the
+   request; highest wins (ties → `priority`, then list order).
+3. No positive match → built-in **ad-hoc** route (`implementer → review + test → debugger`).
+4. Registry missing/malformed → ad-hoc + a note in the summary.
+5. `_`-prefixed files are ignored everywhere.
+
+## Workflow schema
 
 ```yaml
-# workflow-name.yml
-name: Human-readable workflow name
-description: Brief description of what this workflow accomplishes
-version: "1.0"
-
-# Define the steps in this workflow
+name: Human-readable name
+description: What this cycle accomplishes.
+match:
+  intent: [keyword, ...]     # routing keywords
+  priority: 50               # higher wins ties
 steps:
   - id: unique-step-id
-    name: Human-readable step name
-    agent: agent-name           # Which agent executes this step
-    skill: skill-name           # Optional: specific skill to use
-    action: "Description of what to do"
-    type: auto | manual         # Default: auto. Manual requires user action
-    requires: [step-id, ...]    # Steps that must complete first
-    auto_continues: [step-id]   # Steps that auto-run after this one
-    input: "path/to/input"      # Input file or resource
-    output: "path/to/output"    # Output file or resource
-    mandatory: true | false     # Whether this step can be skipped
-
-# Define event-based triggers
-triggers:
-  trigger_name:
-    event: after_implementation | after_fix | on_error | ...
-    agent: agent-name
-    skill: skill-name
-    mandatory: true | false
-    description: "When and why this triggers"
-
-# Define execution rules
-rules:
-  - id: rule-id
-    description: "Rule explanation"
-    condition: "When this applies"
-    action: "What must happen"
+    agent: agent-name        # must exist under .claude/agents/
+    skill: skill-name        # optional; must exist under .claude/skills/
+    action: "What to do"
+    requires: [step-id, ...] # dependencies
+    parallel_with: [step-id] # run concurrently
+    input: "path"            # supports {project-name}, {NN}, {slug}
+    output: "path"
+    mandatory: true|false    # false → fast lane may skip it
+    # Gated step: on_complete REQUIRES a verdict_contract + max_retries
+    verdict_contract: ["APPROVE", "REVISE"]
+    max_retries: 3
+    on_complete:
+      APPROVE: { next: other-step }
+      REVISE: { next: this-or-earlier-step }
 ```
 
-### Field Definitions
+### Verdict contract
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | Yes | Human-readable workflow name |
-| `description` | string | Yes | What the workflow accomplishes |
-| `version` | string | No | Semantic version for tracking changes |
-| `steps` | array | Yes | Ordered list of workflow steps |
-| `triggers` | object | No | Event-based automatic invocations |
-| `rules` | array | No | Behavioral rules and constraints |
+Any gated step declares the exact tokens its agent returns. The agent **must emit
+a machine-checkable final line**, e.g. `VERDICT: REVISE`, and the orchestrator
+branches on it. A verdict outside the contract, or a missing verdict line, is
+treated as a failure (see robustness rules).
 
-### Step Fields
+### Robustness rules (orchestrator prompt)
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | Yes | Unique identifier (kebab-case) |
-| `name` | string | Yes | Human-readable name |
-| `agent` | string | Yes* | Agent that executes this step |
-| `skill` | string | No | Specific skill to invoke |
-| `action` | string | No | Description of the action |
-| `type` | string | No | `auto` (default) or `manual` |
-| `requires` | array | No | Step IDs that must complete first |
-| `auto_continues` | array | No | Steps that auto-run after completion |
-| `input` | string | No | Input file path (supports `{placeholders}`) |
-| `output` | string | No | Output file path (supports `{placeholders}`) |
-| `mandatory` | boolean | No | Whether step can be skipped |
+- **G-A hard-failure** — on agent error/timeout/`maxTurns`/unrecognized verdict:
+  retry once, then stop with a partial summary.
+- **G-C placeholder resolution** — `{project-name}` from repo/`docs/`; `{NN}` =
+  highest existing `docs/specs/phase-*` or `01`; ad-hoc uses scratch paths
+  (`docs/plans/adhoc-{slug}-*`).
+- **G-D parallel join** — wait for all `parallel_with`; pass only if all succeed;
+  route failures to `debugger`, re-run capped by `max_retries`.
+- **Recursion guard** — no step may spawn `orchestrator` or `workflow-author`.
 
-*Not required for `type: manual` steps
+## Authoring a custom cycle
 
-### Path Placeholders
+Two ways, both without touching the orchestrator:
 
-Use placeholders in `input` and `output` paths:
+- **Ask the AI:** "add a `<name>` cycle that does X → Y → Z" — the
+  `workflow-author` agent scaffolds and registers it.
+- **By hand:** copy `_template.yml` to `.claude/workflows/{id}.yml`, fill `match`
+  + `steps` (each `agent`/`skill` must exist; gated steps need a verdict
+  contract), run the validator, then add an `enabled` route to `registry.yml`.
 
-| Placeholder | Description | Example |
-|-------------|-------------|---------|
-| `{project-name}` | Current project name | `novelist` |
-| `{NN}` | Two-digit phase number | `01`, `02` |
-| `{name}` | Dynamic name from context | `auth-module` |
+## Validation (the one deterministic check)
 
-## Available Workflows
-
-| File | Purpose |
-|------|---------|
-| `project-lifecycle.yml` | **Source of truth** - Agent definitions + full phased project workflow |
-| `dev-cycle.yml` | Lean six-step iterative loop (plan → review plan → breakdown → execute → review code → test) |
-| `full-spec-pipeline.yml` | Specification creation with auto-validation |
-| `implementation-stages.yml` | Code implementation execution order |
-| `completion-rules.yml` | Mandatory completion report triggers |
-| `rules.yml` | Global rules and conventions |
-
-Use `dev-cycle.yml` for everyday feature/task delivery; escalate to `project-lifecycle.yml`
-(spec-writer, phase-manager, completion reports) only for full phases or milestones.
-
-## Agent Definitions
-
-All agents are defined in `project-lifecycle.yml` under the `agents:` section. This is the single source of truth for:
-- Agent purpose and capabilities
-- When to use each agent
-- Invocation templates
-- Skills and outputs
-
-To add or modify an agent, edit `project-lifecycle.yml`.
-
-## Usage
-
-Workflows are referenced in `AGENTS.md` and guide agent orchestration. When invoking an agent, consult the relevant workflow to understand:
-
-1. What steps precede and follow the current action
-2. Which artifacts are expected as input/output
-3. What triggers or rules apply
-
-### Example: Following a Workflow
-
-```
-# User wants to start a new project
-
-1. Check project-lifecycle.yml for the workflow
-2. Step 1 says: agent=spec-writer, which auto_continues to validation
-3. Invoke spec-writer agent
-4. Agent automatically runs validation and clarification steps
-5. Proceed to next manual step (user review)
+```bash
+python .claude/skills/validate-config/scripts/validate_config.py            # full scan
+python .claude/skills/validate-config/scripts/validate_config.py <file>     # single workflow
 ```
 
-## Conventions
-
-- **File naming**: `kebab-case.yml`
-- **Step IDs**: `kebab-case`
-- **Phase numbers**: Two digits (`01`, `02`, not `1`, `2`)
-- **Paths**: Use forward slashes, lowercase with hyphens
+Checks frontmatter validity, agent `skills:` refs, registry → workflow
+resolution, step `agent`/`skill` resolution, `fallback` value, the recursion
+guard, and verdict-contract presence on gated steps. Skips `_*.yml`. Exits
+non-zero on **errors only** (warnings are informational).

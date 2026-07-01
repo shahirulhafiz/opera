@@ -2,6 +2,18 @@
 
 This repository uses `.claude/` agent, skill, and workflow files.
 
+## Session Start (persona + onboarding)
+
+You are the guide for this Orchestral Harness template. At the start of a
+session, if the user has NOT given a concrete task, greet them with a brief
+(<=5 lines) orientation, then offer to help:
+- what this repo is (a hands-off agent-orchestration harness),
+- how to use it (just describe the work; mention a "workflow/cycle" to author one),
+- that trivial edits run directly and everything else routes through the orchestrator.
+
+Give this brief only once per session (skip it once real work starts). If the
+user opens with a concrete task, skip the greeting and just do the work.
+
 ## Locations
 
 | Path | Content |
@@ -22,39 +34,38 @@ Escalate to **Full profile** only for:
 - Full phase implementation and verification
 - Explicit user request for full pipeline behavior
 
-## Development Cycle Harness (hands-off orchestration)
+## Orchestral Harness (generic, hands-off routing)
 
-The user should never have to name an agent or a skill. When the user describes a
-feature, change, or bug fix, YOU orchestrate the cycle automatically by delegating to
-subagents by role. Skills load themselves (each subagent preloads its own via the
-`skills:` frontmatter field) — never ask the user to invoke a skill or memory manually.
+The user should never have to name an agent, skill, or workflow. Route by
+request shape:
 
-**Cycle** (defined in `.claude/workflows/dev-cycle.yml`):
+- **Trivial** (~≤15 lines / single file) → execute directly (Lean profile); no orchestrator.
+- **Multi-file or "build / implement / change / fix a feature or bug"** → delegate to
+  the **`orchestrator`** agent. It reads `.claude/workflows/registry.yml`, selects the
+  matching workflow, and runs it end-to-end with enforced gates. With no workflow
+  registered yet, it uses its built-in ad-hoc route
+  (`implementer` → `code-reviewer` + `test-expert` → `debugger`).
+- **Explicit "workflow / cycle / pipeline / route / registry" mention** → delegate to
+  the **`workflow-author`** agent (scaffold → validate → register).
+- **Compound ("author then run")** → `workflow-author` first, then hand the new route
+  to the `orchestrator`.
 
-1. `planner` → draft the implementation plan (`implementation-plan` skill).
-2. `plan-reviewer` → gate the plan. On `REVISE`, loop back to `planner` (max 3). On `APPROVE` / `APPROVE WITH CHANGES`, continue.
-3. `planner` → break the approved plan into tasks (`task-breakdown` skill).
-4. `implementer` → execute tasks in order (`execute-plan` skill).
-5. `code-reviewer` + `test-expert` → review and test in parallel.
-6. `debugger` → fix any issues found; loop back to step 5 until code review is clean and tests pass.
-
-**Harness rules:**
-- Auto-delegate. Do not ask "which agent/skill should I use?" — infer it from the request and this cycle.
-- Right-size the cycle:
-  - Trivial one-line / single-file edit → execute directly (Lean profile), skip the ceremony.
-  - Multi-file or feature/bug work → run the full cycle above.
-- Run steps 5–6 automatically after execution; do not wait to be asked to review or test.
-- Only pause for the user at genuine decision points: a `plan-reviewer` blocker needing a product/scope decision, destructive actions, or ambiguous requirements.
-- Announce the current step briefly as you go (e.g. "Planning → Plan review → …") so the flow is visible without the user driving it.
+**Rules:**
+- Auto-delegate. Do not ask "which agent/skill/workflow?" — infer it from the request.
+- Skills load themselves (each agent preloads its own via the `skills:` frontmatter).
+- Only pause for the user at genuine decision points: a gate blocker needing a
+  product/scope decision, destructive actions, or ambiguous requirements.
+- Announce the current step briefly as you go so the flow is visible.
+- The one deterministic check is the `validate-config` script; run it after editing
+  `.claude/` config.
 
 ## Invocation Guardrails
 
-- Do not trigger `phase-manager` or `completion-report` for routine fixes unless requested.
-- Run `docs-context-awareness` only for docs creation, structural updates, or uncertain conventions.
+- Do not run the full cycle for routine one-line fixes; prefer direct Lean execution.
 - Use debugger verification by risk level:
   - High risk / cross-module / migration: required
   - Small contained fix: optional
-- Prefer stage-based spec loading for implementation and verification tasks.
+- Prefer stage-based / on-demand context loading for implementation and verification tasks.
 
 ## Tool Relevance Filter
 

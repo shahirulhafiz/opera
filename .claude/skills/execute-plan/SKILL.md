@@ -1,137 +1,56 @@
 ---
 name: execute-plan
-description: Systematically executes implementation plans phase by phase with validation at each step. Use when implementing a phase, executing tasks from an implementation plan, or building features according to specifications.
+description: Systematically implements a change task by task with validation at each step. Works from an explicit plan when one exists, or directly from the request. Use when building or changing features.
 ---
-# Implementation Plan Execution
+# Execute Plan
 
-Systematically execute an implementation plan phase by phase, task by task, ensuring thorough completion with proper testing and documentation.
+Implement work systematically, one task at a time, with validation and tests at
+each step. This skill is self-contained: it works whether or not a formal plan
+document exists.
 
 ## When to Use
 
-- When starting phase implementation
-- When executing tasks from an implementation plan
-- When building features according to specifications
+- Building a new feature or making a change.
+- Executing tasks from a plan, task list, or issue.
+- Running the `execute` step of a workflow or the ad-hoc route.
 
-## Prerequisites
+## Inputs (use whatever is available)
 
-- ✅ Scoped specification exists (`docs/specs/phase-{NN}/`)
-- ✅ Implementation plan exists (`docs/plans/phase-{NN}-implementation-plan.md`)
-- ✅ Full specification exists (`docs/{project-name}-full-spec.md`)
-- ✅ Development environment is set up
-- ✅ Version control initialized with clean working directory
+- An explicit plan / task breakdown, if one was provided.
+- Otherwise, the user's request plus the current state of the codebase.
+- Relevant existing code, tests, and conventions (read on demand, not all up front).
 
-## Scoped Specification Files
+If requirements are ambiguous, resolve the smallest next unknown by reading the
+relevant file — don't stall, and don't invent scope that wasn't asked for.
 
-Use staged loading from `docs/specs/phase-{NN}/` instead of reading everything up front:
-- `00-overview.md` - Phase overview & context
-- `01-ui-design.md` - UI/UX specifications
-- `02-api-design.md` - API endpoints & contracts (🔒 LOCKED)
-- `03-database-design.md` - Database schema (🔒 LOCKED)
-- `04-integrations.md` - Integration points
-- `05-testing.md` - Testing requirements
-- `06-non-functional.md` - NFRs, security, performance
-- `07-checklist.md` - Implementation checklist
+## Execution Loop
 
-### Minimum Initial Read Set
-- `00-overview.md`
-- `07-checklist.md`
-- `docs/plans/phase-{NN}-implementation-plan.md`
-
-### Stage-Based Reads
-- Database stage: add `03-database-design.md`
-- API stage: add `02-api-design.md`
-- Frontend stage: add `01-ui-design.md`
-- Integration stage: add `04-integrations.md`
-- Test/quality stage: add `05-testing.md`, `06-non-functional.md`
-
-If requirements are ambiguous, escalate by loading the next relevant spec file, not all files.
-
-## Execution Phases
-
-### 1. Preparation Phase
-- Read minimum initial set
-- Review the entire implementation plan
-- Understand technology stack and tools
-- Note all dependencies and versions
-
-### 2. Execution Phase - Work Sequentially
-
-**Stage Order:**
-1. **Database** (DB-1 → DB-2 → DB-3 → DB-4)
-2. **API Foundation** (API-1 → API-4, API-5)
-3. **Authentication** (API-2)
-4. **API Endpoints** (API-3+)
-5. **Frontend Foundation** (UI-1 → UI-2)
-6. **Frontend Features** (UI-3 → UI-5 → UI-4)
-7. **Integration Testing** (INT-1 → INT-2 → INT-3)
-8. **Performance & Security** (PERF-1, PERF-2, SEC-1)
-9. **Deployment** (DEP-1 → DEP-2 → DEP-3)
-
-**For Each Task:**
-1. Read all sections (Description, Steps, Implementation Details)
-2. Refer to the stage-relevant scoped spec files for context
-3. Write complete, production-ready code (no placeholders)
-4. Include all error handling
-5. Add appropriate comments
-6. Create all files listed in "Files to Create"
-7. Run all validation steps
-8. Verify all acceptance criteria are met
-9. Mark task as complete
-
-### 3. Integration Phase
-- Run integration tests after completing feature tasks
-- Verify components work together
-- Fix any integration issues
-
-### 4. Quality Phase
-- Run performance tests
-- Run security tests
-- Optimize as needed
-- Verify all quality metrics
-
-### 5. Completion Phase
-- Deploy (if applicable)
-- Run smoke tests
-- Write completion report
-
-## Critical Guidelines
-
-| Guideline | Description |
-|-----------|-------------|
-| **Be Complete** | Write full, working code - no "TODO" or placeholder comments |
-| **Follow Specs Exactly** | Implement what's specified, nothing more or less |
-| **Test Everything** | Run validation steps after every task |
-| **Handle Errors** | Every function should handle potential errors |
-| **Use Latest Stable** | Install latest stable versions of packages |
-| **Document Clearly** | Update README, add code comments, document APIs |
-| **Stay Sequential** | Respect dependencies, complete tasks in order |
-
-## Common Pitfalls to Avoid
-
-- ❌ Skipping validation steps
-- ❌ Starting UI before API is done
-- ❌ Skipping tests
-- ❌ Adding features not in scoped spec
-- ❌ Poor error handling
-- ❌ Inadequate documentation
-- ❌ Not testing integrations
-- ❌ Hardcoding values (use environment variables)
-- ❌ Creating placeholder code
+1. **Scope** — restate the goal and list the concrete tasks in dependency order.
+   For a small change this may be a single task.
+2. **Implement** — for each task:
+   - Read the code you're about to change and its immediate neighbors.
+   - Write complete, production-ready code — no placeholders or `TODO`s.
+   - Handle errors; don't hardcode secrets/config (use env vars).
+   - Match the existing style and conventions of the file/project.
+3. **Validate** — run the build/linter and the relevant tests after each task.
+   Fix what you broke before moving on.
+4. **Verify** — confirm the task's acceptance criteria (or the request's intent)
+   are actually met.
+5. **Repeat** in order, respecting dependencies.
 
 ## Definition of Done
 
-### Task Level
-- [ ] Code written and follows standards
-- [ ] Unit tests written and passing
-- [ ] No linter errors
-- [ ] Documentation updated
-- [ ] Validation steps completed
-- [ ] All acceptance criteria met
+- [ ] Code written, complete, and consistent with project conventions
+- [ ] Errors handled; no hardcoded secrets/config
+- [ ] Relevant tests written/updated and passing
+- [ ] No linter/build errors
+- [ ] Acceptance criteria / request intent satisfied
+- [ ] Docs or comments updated where behavior changed
 
-### Phase Level
-- [ ] All features completed
-- [ ] All tests passing (>80% coverage)
-- [ ] Performance requirements met
-- [ ] Security audit passed
-- [ ] Documentation complete
-- [ ] Completion report written
+## Pitfalls to Avoid
+
+- ❌ Placeholder code or `TODO`s left behind
+- ❌ Skipping validation or tests
+- ❌ Adding features not requested
+- ❌ Poor error handling or hardcoded values
+- ❌ Reading the whole codebase up front instead of on demand

@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Expert code review specialist with security focus. Use immediately after code changes to audit quality.
-model: sonnet
+model: haiku
 tools: Read, Grep, Glob, Bash
 disallowedTools: Edit, Write
 ---
