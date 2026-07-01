@@ -1,0 +1,372 @@
+# Project Lifecycle Workflow
+# Main workflow containing all agents and project flow
+
+name: Project Lifecycle
+description: Complete workflow from project inception through phase completion
+version: "1.0"
+
+# =============================================================================
+# AGENT DEFINITIONS
+# =============================================================================
+
+agents:
+  # Development Agents
+  code-reviewer:
+    type: development
+    purpose: Security & quality audits
+    when_to_use: After substantial code changes or explicit review request
+    invocation: |
+      Task(subagent_type="code-reviewer", prompt="Review the recent code changes")
+    capabilities:
+      - Read-only analysis of git diffs
+      - Security checks (SQL injection, XSS, auth bypass, secrets)
+      - Quality checks (performance, error handling, readability)
+
+  debugger:
+    type: development
+    purpose: Error diagnosis
+    when_to_use: When encountering errors, crashes, or unexpected behavior
+    invocation: |
+      Task(subagent_type="debugger", prompt="Debug: [error details]")
+    skills: [tdd-repro, monitor-logic, log-parser]
+    routing:
+      crash_or_stack_trace: log-parser
+      wrong_output: monitor-logic
+
+  test-expert:
+    type: development
+    purpose: TDD & test automation
+    when_to_use: For comprehensive testing and bug reproduction
+    invocation: |
+      Task(subagent_type="test-expert", prompt="Write tests for [feature]")
+    strategy: "Unit (many) → Integration (some) → E2E (few)"
+
+  # Planning Agents
+  spec-writer:
+    type: planning
+    purpose: Create specifications
+    when_to_use: Starting new projects, creating or validating specs
+    invocation: |
+      Task(subagent_type="spec-writer", prompt="Create a full specification for [project]")
+    skills: [docs-context-awareness, full-specs, scoped-spec, validate-full-specs, issues-clarification]
+    workflow: full-spec-pipeline.yml
+    outputs:
+      - "docs/{project-name}-full-spec.md"
+      - "docs/specs/phase-{NN}/"
+
+  planner:
+    type: planning
+    purpose: Implementation plans
+    when_to_use: Preparing for phase implementation
+    invocation: |
+      Task(subagent_type="planner", prompt="Create implementation plan for phase {NN}")
+    skills: [implementation-plan, issues-clarification]
+    outputs:
+      - "docs/plans/phase-{NN}-implementation-plan.md"
+
+  implementer:
+    type: planning
+    purpose: Execute plans
+    when_to_use: Building features according to specs and plans
+    invocation: |
+      Task(subagent_type="implementer", prompt="Execute phase {NN} implementation plan")
+    skills: [execute-plan]
+    workflow: implementation-stages.yml
+    post_action:
+      agent: phase-manager
+      mandatory: false
+      condition: "phase completion threshold met or user requested completion verification"
+
+  phase-manager:
+    type: planning
+    purpose: Verify & report completion
+    when_to_use: After phase-complete work or explicit report/verification request
+    invocation: |
+      Task(subagent_type="phase-manager", prompt="Verify phase {NN} completion")
+    skills: [docs-context-awareness, check-phase, completion-report]
+    workflow: completion-rules.yml
+    outputs:
+      - "docs/reports/phase-{NN}-completion-report.md"
+
+  ui-designer:
+    type: planning
+    purpose: UI prompts & assets
+    when_to_use: Creating UI mockups and design specs
+    invocation: |
+      Task(subagent_type="ui-designer", prompt="Generate UI prompts for phase {NN}")
+    skills: [ui-prompt]
+    outputs:
+      - "docs/references/design-assets/phase-{NN}/"
+profiles:
+  lean:
+    default: true
+    description: Default profile for small and targeted tasks
+    behavior:
+      - Use direct implementation without heavy post-actions
+      - Skip automatic completion-report generation
+      - Run debugger verification only for high-risk work
+  full:
+    default: false
+    description: Full governance for phase-complete or spec-heavy workflows
+    behavior:
+      - Run verification and reporting chain
+      - Require phase-manager for completion handoff
+      - Use full spec validation workflow
+
+exploration_modes:
+  quick_discovery:
+    default: true
+    purpose: Fast initial architecture/context discovery
+    constraints:
+      max_parallel_explore_agents: 1
+      max_tool_uses_per_pass: 10
+      max_files_read: 6
+      summary_first: true
+    next_step:
+      - Narrow scope before any deep follow-up
+  deep_discovery:
+    default: false
+    purpose: Expanded investigation when quick pass is insufficient
+    allowed_when:
+      - unresolved ambiguity after quick pass
+      - explicit user request for deep dive
+      - high-risk migration/debug scenario
+    constraints:
+      max_parallel_explore_agents: 2
+      require_justification: true
+      dedupe_file_reads: true
+      stop_and_ask_if_budget_exceeded: true
+
+# =============================================================================
+# PROJECT LIFECYCLE STEPS
+# =============================================================================
+
+steps:
+  # Phase 1: Specification
+  - id: new-project
+    name: New Project
+    agent: spec-writer
+    skill: full-specs
+    action: Create full specification for the project
+    auto_continues: [validate-spec]
+    output: "docs/{project-name}-full-spec.md"
+
+  - id: validate-spec
+    name: Validate Specification
+    agent: spec-writer
+    skill: validate-full-specs
+    requires: [new-project]
+    output: "docs/reports/{project-name}-full-spec-validation-report.md"
+    auto_triggered: true
+
+  - id: extract-clarifications
+    name: Extract Clarification Questions
+    agent: spec-writer
+    skill: issues-clarification
+    requires: [validate-spec]
+    condition: "Validation report has unresolved gaps, ambiguity, or blockers"
+    output: "docs/reports/issues-for-clarification.md"
+    auto_triggered: false
+
+  # Phase 2: User Review (Manual)
+  - id: review-clarifications
+    name: Review Clarifications
+    type: conditional
+    condition: "Clarification issues file exists"
+    action: User reviews clarification questions and provides decisions
+    requires: [extract-clarifications]
+    input: "docs/reports/issues-for-clarification.md"
+
+  - id: update-spec
+    name: Update Specification
+    type: manual
+    action: Update full spec based on clarification decisions
+    requires_one_of:
+      - path_a: [review-clarifications]
+        condition: "Clarification review was performed"
+      - path_b: [validate-spec]
+        condition: "No clarification issues were generated"
+
+  # Phase 3: Planning
+  - id: phase-planning
+    name: Phase Planning
+    agent: planner
+    skill: implementation-plan
+    requires: [update-spec]
+    output: "docs/plans/phase-{NN}-implementation-plan.md"
+
+  - id: ui-design
+    name: UI Design
+    agent: ui-designer
+    skill: ui-prompt
+    requires: [update-spec]
+    output: "docs/references/design-assets/phase-{NN}/"
+    parallel_with: [phase-planning]
+
+  # Phase 4: Implementation
+  - id: implementation
+    name: Implementation
+    agent: implementer
+    skill: execute-plan
+    requires: [phase-planning]
+    input: "docs/plans/phase-{NN}-implementation-plan.md"
+
+  - id: post-implementation-verification
+    name: Post-Implementation Verification
+    agent: debugger
+    requires: [implementation]
+    mandatory: false
+    condition: "High-risk or cross-module implementation, or explicit verification request"
+    invocation: |
+      Task(subagent_type="debugger", prompt="Verify implementation: check all tasks completed, no errors, basic functionality works")
+    description: Verify implementation before code review and testing
+
+  - id: code-review
+    name: Code Review
+    agent: code-reviewer
+    requires_one_of:
+      - path_a: [post-implementation-verification]
+        condition: "Post-implementation verification executed"
+      - path_b: [implementation]
+        condition: "Verification skipped by gate conditions"
+    parallel_with: [testing]
+
+  - id: testing
+    name: Testing
+    agent: test-expert
+    requires_one_of:
+      - path_a: [post-implementation-verification]
+        condition: "Post-implementation verification executed"
+      - path_b: [implementation]
+        condition: "Verification skipped by gate conditions"
+    parallel_with: [code-review]
+
+  # Phase 5: Debugging (Conditional with loop-back)
+  - id: debugging
+    name: Debugging
+    agent: debugger
+    type: conditional
+    condition: "Errors occur during testing or code review"
+    triggers_on:
+      - testing.failed
+      - code-review.issues_found
+    invocation: |
+      Task(subagent_type="debugger", prompt="Debug and fix issues found in testing/code-review: {error_details}")
+    on_complete:
+      success:
+        next: revalidation
+        action: Proceed to re-validate fixes
+      failure:
+        next: debugging
+        action: Continue debugging until issues resolved
+        max_retries: 3
+
+  # Phase 5b: Re-validation after debugging (loops back to verify fixes)
+  - id: revalidation
+    name: Re-validation After Fixes
+    agent: debugger
+    type: conditional
+    requires: [debugging]
+    condition: "Debugging step was executed"
+    invocation: |
+      Task(subagent_type="debugger", prompt="Re-validate after debugging: verify all fixes work, run affected tests, check no regressions introduced")
+    on_complete:
+      success:
+        next: pre-completion-check
+      failure:
+        next: debugging
+        action: Loop back to debugging if new issues found
+
+  # Phase 6: Pre-Completion Verification
+  - id: pre-completion-check
+    name: Pre-Completion Verification
+    agent: debugger
+    requires_one_of:
+      - path_a: [code-review, testing]  # No debugging needed
+        condition: "Both code-review and testing passed without issues"
+      - path_b: [revalidation]  # After debugging loop completed
+        condition: "Debugging occurred and revalidation passed"
+    mandatory: false
+    condition: "Phase completion threshold met or full profile enabled"
+    invocation: |
+      Task(subagent_type="debugger", prompt="Final verification before phase completion: comprehensive check of all features, integrations, error handling, and data consistency")
+    description: Final verification before marking phase complete
+    gates:
+      - All tests passing
+      - No unresolved code review issues
+      - No regression from debugging fixes
+      - Integration points verified
+
+  # Phase 7: Completion
+  - id: phase-complete
+    name: Phase Complete
+    agent: phase-manager
+    skill: check-phase
+    requires: [pre-completion-check]
+    output: "docs/reports/phase-{NN}-completion-report.md"
+    mandatory: false
+    condition: "Phase verified complete or user explicitly requested completion report"
+
+# =============================================================================
+# PARALLEL EXECUTION PATTERNS
+# =============================================================================
+
+parallel_groups:
+  phase_preparation:
+    agents: [planner, ui-designer]
+    description: Planning and UI design can run in parallel
+
+  post_implementation:
+    agents: [code-reviewer, test-expert]
+    description: Code review and testing can run in parallel
+
+# =============================================================================
+# DEBUGGING LOOP FLOW
+# =============================================================================
+#
+# This diagram shows the debugging loop-back mechanism:
+#
+#   ┌─────────────────┐     ┌─────────────┐
+#   │  code-review    │     │   testing   │
+#   └────────┬────────┘     └──────┬──────┘
+#            │                     │
+#            └──────────┬──────────┘
+#                       │
+#                       ▼
+#            ┌──────────────────────┐
+#            │  Issues found?       │
+#            └──────────┬───────────┘
+#                       │
+#          ┌────────────┴────────────┐
+#          │ NO                      │ YES
+#          ▼                         ▼
+#   ┌──────────────┐         ┌──────────────┐
+#   │ pre-         │         │  debugging   │◄──────┐
+#   │ completion   │         └──────┬───────┘       │
+#   │ -check       │                │               │
+#   └──────┬───────┘                ▼               │
+#          │                 ┌──────────────┐       │
+#          │                 │ revalidation │       │
+#          │                 └──────┬───────┘       │
+#          │                        │               │
+#          │               ┌────────┴────────┐      │
+#          │               │ NO              │ YES  │
+#          │               ▼                 │      │
+#          │        ┌──────────────┐         │      │
+#          │        │ New issues?  │─────────┼──────┘
+#          │        └──────────────┘         │
+#          │                                 │
+#          │◄────────────────────────────────┘
+#          │
+#          ▼
+#   ┌──────────────┐
+#   │ phase-       │
+#   │ complete     │
+#   └──────────────┘
+#
+# Key behaviors:
+# 1. If code-review and testing both pass → skip debugging → pre-completion-check
+# 2. If issues found → debugging → revalidation → check for new issues
+# 3. If revalidation finds new issues → loop back to debugging (max 3 retries)
+# 4. Only after revalidation passes → pre-completion-check
+# 5. pre-completion-check gates ensure all paths are properly validated

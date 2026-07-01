@@ -1,0 +1,11 @@
+# This file ensures the docs directory structure is tracked in git
+
+# Directory Structure:
+# docs/
+# ├── {project-name}-full-spec.md
+# ├── specs/
+# ├── plans/
+# └── reports/
+
+
+

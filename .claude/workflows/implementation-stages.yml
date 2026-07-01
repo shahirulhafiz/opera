@@ -1,0 +1,155 @@
+# Implementation Stages Workflow
+# Defines the execution order for implementing a phase
+
+name: Implementation Stages
+description: Ordered execution stages for systematic phase implementation
+version: "1.0"
+
+# Implementation follows a layered approach: foundation first, then features
+strategy: bottom-up
+principle: Build foundational layers before dependent features
+
+stages:
+  - id: stage-1
+    name: Database Layer
+    order: 1
+    prefix: DB
+    tasks:
+      - DB-1: Schema design and migrations
+      - DB-2: Model definitions
+      - DB-3: Seed data setup
+      - DB-4: Database utilities and helpers
+    dependencies: []
+    notes: Foundation layer - no external dependencies
+
+  - id: stage-2
+    name: API Foundation
+    order: 2
+    prefix: API
+    tasks:
+      - API-1: Server setup and configuration
+      - API-2: Authentication middleware
+      - API-3: Base route handlers
+      - API-4: Error handling middleware
+      - API-5: Request validation
+    dependencies: [stage-1]
+    notes: Requires database layer for data access
+
+  - id: stage-3
+    name: API Endpoints
+    order: 3
+    prefix: API
+    tasks:
+      - API-6+: Feature-specific endpoints
+    dependencies: [stage-2]
+    notes: Built on top of API foundation
+
+  - id: stage-4
+    name: Frontend Foundation
+    order: 4
+    prefix: UI
+    tasks:
+      - UI-1: Project setup and configuration
+      - UI-2: Base layout and routing
+    dependencies: [stage-2]
+    notes: Can start once API foundation is ready
+
+  - id: stage-5
+    name: Frontend Features
+    order: 5
+    prefix: UI
+    tasks:
+      - UI-3: Core components
+      - UI-4: Feature pages
+      - UI-5: State management
+      - UI-6: API integration
+    dependencies: [stage-3, stage-4]
+    notes: Requires both API endpoints and frontend foundation
+
+  - id: stage-6
+    name: Integration Testing
+    order: 6
+    prefix: INT
+    tasks:
+      - INT-1: API integration tests
+      - INT-2: E2E user flow tests
+      - INT-3: Cross-feature integration tests
+    dependencies: [stage-5]
+    notes: Test complete feature integration
+
+  - id: stage-7
+    name: Performance & Security
+    order: 7
+    prefix: PERF
+    tasks:
+      - PERF-1: Performance optimization
+      - PERF-2: Security hardening
+      - PERF-3: Load testing
+    dependencies: [stage-6]
+    notes: Optimize after functionality is verified
+
+  - id: stage-8
+    name: Deployment
+    order: 8
+    prefix: DEPLOY
+    tasks:
+      - DEPLOY-1: Environment configuration
+      - DEPLOY-2: CI/CD pipeline
+      - DEPLOY-3: Deployment verification
+    dependencies: [stage-7]
+    notes: Final stage - deploy verified and optimized code
+
+# Execution rules
+rules:
+  - id: sequential-stages
+    description: Complete all tasks in a stage before moving to the next
+    enforcement: strict
+
+  - id: task-validation
+    description: Validate each task completion before proceeding
+    enforcement: conditional
+    condition: "Required for high-risk, cross-module, or externally integrated tasks"
+    verification:
+      agent: debugger
+      action: Verify task output meets acceptance criteria
+      invocation: |
+        Task(subagent_type="debugger", prompt="Verify task {TASK-ID} completion: check outputs, validate functionality, confirm no regressions")
+
+  - id: dependency-check
+    description: Verify all stage dependencies are satisfied
+    enforcement: strict
+    verification:
+      agent: debugger
+      action: Validate all dependency contracts are met
+      invocation: |
+        Task(subagent_type="debugger", prompt="Check stage {STAGE-ID} dependencies: verify all required interfaces, data contracts, and integrations are functional")
+
+# Agent reference: see project-lifecycle.yml for implementer definition
+agent_ref: implementer
+skill: execute-plan
+input: "docs/plans/phase-{NN}-implementation-plan.md"
+
+# Post-implementation requirement
+post_completion:
+  mandatory: false
+  condition: "Phase completion threshold met or user requested completion report"
+  trigger: completion-rules.yml
+  action: Run phase-manager with completion-report skill
+  notes: |
+    Trigger phase-manager when a full phase (or substantial milestone) is complete,
+    not for every small implementation step.
+
+# Pre-completion verification (CONDITIONAL)
+pre_completion_verification:
+  mandatory: false
+  condition: "Enable for full profile or before marking a phase complete"
+  agent: debugger
+  action: Comprehensive verification before marking stage complete
+  invocation: |
+    Task(subagent_type="debugger", prompt="Pre-completion check for stage {STAGE-ID}: verify all tasks pass, no errors, integrations work, and outputs are valid")
+  checklist:
+    - All stage tasks completed without errors
+    - No regression in existing functionality
+    - Integration points verified
+    - Data consistency validated
+    - Error handling tested
