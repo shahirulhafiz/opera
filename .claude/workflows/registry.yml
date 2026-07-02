@@ -16,4 +16,9 @@ fallback: adhoc
 #     description: What this workflow does
 #     match: { intent: [keyword, another-keyword], priority: 50 }
 #     enabled: true
-routes: []
+routes:
+  - id: web-automation
+    workflow: web-automation.yml
+    description: Register a target URL and inspect all reachable pages/actions, storing elements, behaviors, transitions, timing, errors, and UI feedback in a local SQLite DB.
+    match: { intent: [web, browser, automation, url, inspect, element, behavior, crawl, ui], priority: 60 }
+    enabled: true

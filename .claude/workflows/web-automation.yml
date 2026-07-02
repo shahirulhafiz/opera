@@ -1,0 +1,50 @@
+name: Web Automation
+description: Register a target URL and drive a real browser to crawl all reachable pages, exercise every functionality, capture transient UI feedback, and store elements/behaviors/timing/errors in a local SQLite database.
+
+# Routing keywords for the orchestrator (higher priority wins ties).
+match:
+  intent: [web, browser, automation, url, inspect, element, behavior, crawl, ui]
+  priority: 60
+
+steps:
+  # 1. Register the target and seed the crawl frontier / DB.
+  - id: register-target
+    agent: browser-use
+    skill: register-web-target
+    action: >-
+      Initialize the store (store.py init) and upsert the target URL with a stable
+      {slug} plus any goal/auth notes into docs/browse/webapp.db
+      (store.py register --slug {slug} --url <url>).
+    output: "docs/browse/webapp.db"
+    mandatory: true
+
+  # 2. Bounded crawl of all reachable in-scope pages + actions into the DB.
+  - id: inspect
+    agent: browser-use
+    skill: browse-inspect
+    requires: [register-target]
+    action: >-
+      Bounded BFS crawl of all reachable in-scope pages. Exercise every
+      non-destructive functionality, capture transient UI feedback
+      (snackbars/toasts/notifications/modals/validation/spinners), and log each
+      action's response time, status, and errors. Persist elements, behaviors,
+      transitions, action_log, and ui_feedback into docs/browse/webapp.db.
+    input: "docs/browse/webapp.db"
+    output: "docs/browse/webapp.db"
+    verdict_contract: ["COMPLETE", "BLOCKED"]
+    max_retries: 1
+    on_complete:
+      COMPLETE: { next: done }
+      BLOCKED: { next: done }
+    mandatory: true
+
+  # 3. Report what was stored and how to query it.
+  - id: done
+    type: manual
+    requires: [inspect]
+    action: >-
+      Report stored counts (targets/pages/elements/behaviors/feedback) and
+      action-log stats (total actions, error rate, avg/p95 response time via
+      store.py stats), plus any blockers. Explain how to query the store with the
+      browse-query skill, and ask whether to extend (e.g. a future generate-tests
+      step).

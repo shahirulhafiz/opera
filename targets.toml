@@ -1,0 +1,20 @@
+# Target registry for browse-inspect store.py register-config
+#
+# Usage:
+#   python scripts/store.py --db docs/browse/webapp.db init
+#   python scripts/store.py --db docs/browse/webapp.db register-config --config targets.toml
+#   python scripts/store.py --db docs/browse/webapp.db register-config --slug my-app
+
+# Add more blocks as needed:
+# [[targets]]
+# slug = "staging-app"
+# url = "https://staging.example.com"
+# goal = "Regression checks before release"
+# auth = "email-login"
+
+
+
+[[targets]]
+slug = "mesiniaga-page"
+url = "https://mesiniaga.com.my/"
+goal = "Explore core user flows"
