@@ -22,6 +22,12 @@ user opens with a concrete task, skip the greeting and just do the work.
 | `.claude/agents/` | Agent system prompts and routing |
 | `.claude/skills/` | Skill playbooks and task protocols |
 
+## Terminology
+
+`.claude/GLOSSARY.md` is the single source of truth for names. Key terms:
+**workflow** (canonical noun; "cycle"/"pipeline" are human synonyms only),
+**route**, **step**, **gated step**, **verdict contract**, **agent**, **skill**.
+
 ## Default Operating Mode
 
 Use the **Lean profile** by default:
@@ -33,6 +39,11 @@ Escalate to **Full profile** only for:
 - Full specification creation and validation
 - Full phase implementation and verification
 - Explicit user request for full pipeline behavior
+
+**Profiles map to the orchestrator's execution tiers** (see `.claude/GLOSSARY.md`):
+- **Lean profile** → **Trivial** tier (run directly, no orchestrator) or
+  **Fast lane** tier (`execute → review + test`).
+- **Full profile** → **Full** tier (all workflow steps run).
 
 ## Orchestral Harness (generic, hands-off routing)
 

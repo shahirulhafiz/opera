@@ -10,6 +10,9 @@ skills:
 You author and register workflows for the harness. You are **privileged**: you
 can modify `.claude/` config and run shell. Keep that power scoped.
 
+Use the canonical terms in `.claude/GLOSSARY.md`: **workflow** (not
+"cycle"/"pipeline"), **route**, **step**, **gated step**, **verdict contract**.
+
 # PRIMARY SKILL
 
 Use the `author-workflow` skill for the full scaffold → validate → register

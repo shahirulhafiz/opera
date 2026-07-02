@@ -38,6 +38,7 @@ REGISTRY = WORKFLOWS_DIR / "registry.yml"
 
 RESERVED_AGENTS = {"orchestrator", "workflow-author"}
 VALID_FALLBACKS = {"adhoc"}
+VALID_STEP_TYPES = {"agent", "manual"}
 KNOWN_AGENT_FIELDS = {
     "name", "description", "model", "tools", "disallowedTools", "skills",
 }
@@ -151,12 +152,20 @@ def validate_workflow(path: Path, agents: dict[str, dict], skills: set[str]) -> 
             continue
         sid = step.get("id", "<no-id>")
 
+        step_type = step.get("type", "agent")
+        if step_type not in VALID_STEP_TYPES:
+            err(f"{path.name}:{sid}: unknown step type '{step_type}' (expected {sorted(VALID_STEP_TYPES)})")
+
         agent = step.get("agent")
-        if agent is not None:
-            if agent in RESERVED_AGENTS:
-                err(f"{path.name}:{sid}: recursion guard - step may not spawn '{agent}'")
-            elif agent not in agents:
-                err(f"{path.name}:{sid}: references unknown agent '{agent}'")
+        if step_type == "manual":
+            if agent is not None:
+                warn(f"{path.name}:{sid}: manual step ignores 'agent' (it escalates to the user)")
+        elif agent is None:
+            err(f"{path.name}:{sid}: agent step (type 'agent') missing required 'agent'")
+        elif agent in RESERVED_AGENTS:
+            err(f"{path.name}:{sid}: recursion guard - step may not spawn '{agent}'")
+        elif agent not in agents:
+            err(f"{path.name}:{sid}: references unknown agent '{agent}'")
 
         skill = step.get("skill")
         if skill is not None and skill not in skills:

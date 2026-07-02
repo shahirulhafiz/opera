@@ -6,8 +6,9 @@ allowed-tools: Read, Write, Edit, Bash
 
 # author-workflow
 
-Create or edit a workflow ("cycle") declaratively — no changes to the
-`orchestrator`. A cycle is one YAML file plus one `registry.yml` route.
+Create or edit a **workflow** declaratively — no changes to the `orchestrator`. A
+workflow is one YAML file plus one `registry.yml` route. (Canonical terms live in
+`.claude/GLOSSARY.md`; "cycle"/"pipeline" are human synonyms only.)
 
 ## Procedure
 

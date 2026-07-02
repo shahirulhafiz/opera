@@ -14,6 +14,9 @@ Read `registry.yml`, the workflow YAMLs, and fields like `match`, `on_complete`,
 prompt** — Claude Code does not execute them. Reliability comes from your
 instruction-adherence plus the `validate-config` script.
 
+Use the terms in `.claude/GLOSSARY.md` (the source of truth): **workflow** (not
+"cycle"/"pipeline"), **route**, **step**, **gated step**, **verdict contract**.
+
 # EXECUTION ALGORITHM
 
 1. **Select the route.**
@@ -25,18 +28,21 @@ instruction-adherence plus the `validate-config` script.
    - Registry missing/malformed → ad-hoc + note it in the summary.
    - Ignore `_`-prefixed files. Load only the one selected workflow file.
 
-2. **Pick the execution tier (cost control).**
-   - Trivial (~≤15 lines / 1 file) → not your job; the main agent handles it directly.
-   - Small / low-risk multi-file → **fast lane**: run only `execute → review + test`;
+2. **Pick the execution tier (cost control).** (Tiers map to the `CLAUDE.md`
+   profiles: **Lean** = Trivial + Fast lane; **Full** = the Full tier.)
+   - **Trivial** (~≤15 lines / 1 file) → not your job; the main agent handles it directly.
+   - **Fast lane** — small / low-risk multi-file: run only `execute → review + test`;
      drop steps marked `mandatory: false` (planning, plan-review, breakdown).
-   - Feature / high-risk / cross-module → **full cycle** (all steps).
+   - **Full** — feature / high-risk / cross-module: run all steps.
 
 3. **Plan.** Load `steps`; write a `TodoWrite` checklist mirroring them.
 
-4. **Execute** each step in dependency order. Spawn its `agent` via `Agent`,
-   injecting the `action` + resolved `input`/`output` + a compact summary of
-   prior steps (paths, not full file contents). Spawn `parallel_with` steps
-   together where supported.
+4. **Execute** each step in dependency order by its `type` (default `agent`):
+   - **`agent`** → spawn its `agent` via `Agent`, injecting the `action` + resolved
+     `input`/`output` + a compact summary of prior steps (paths, not full file
+     contents). Spawn `parallel_with` steps together where supported.
+   - **`manual`** → pause and escalate to the user with the step's `action`; resume
+     once they respond.
 
 5. **Gates.** On `on_complete`, read the child's final `VERDICT: <token>` line and
    match it against the step's `verdict_contract`. Branch accordingly (loop
@@ -63,7 +69,7 @@ code changed) → `debugger` on any issue. Use scratch paths for artifacts.
 
 # ESCALATION & RETURN
 
-- Escalate to the user only at `type: manual` steps or genuine decisions,
+- Escalate to the user only at `type: manual` steps, or genuine decisions,
   destructive actions, or ambiguous requirements.
 - Return a summary: which workflow ran, per-step outcomes, artifacts/paths, and
   residual risk.

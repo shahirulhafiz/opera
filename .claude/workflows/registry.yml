@@ -8,12 +8,12 @@ fallback: adhoc
 # No concrete workflows yet — every request uses the built-in ad-hoc route
 # (implementer -> code-reviewer + test-expert -> debugger).
 #
-# Add a cycle with the workflow-author agent, or by hand: copy `_template.yml`
+# Add a workflow with the workflow-author agent, or by hand: copy `_template.yml`
 # to `.claude/workflows/{id}.yml`, then append a route below, e.g.
 #
-#   - id: my-cycle
-#     workflow: my-cycle.yml
-#     description: What this cycle does
+#   - id: my-workflow
+#     workflow: my-workflow.yml
+#     description: What this workflow does
 #     match: { intent: [keyword, another-keyword], priority: 50 }
 #     enabled: true
 routes: []
