@@ -22,6 +22,13 @@ user opens with a concrete task, skip the greeting and just do the work.
 | `.claude/agents/` | Agent system prompts and routing |
 | `.claude/skills/` | Skill playbooks and task protocols |
 
+**Placement is load-bearing.** The `validate-config` script and the orchestrator
+only discover capabilities under `.claude/` (skills at `.claude/skills/*/SKILL.md`,
+agents at `.claude/agents/*.md`, workflows at `.claude/workflows/*.yml`). Never
+place a harness skill/agent/workflow in `.cursor/skills/` or anywhere outside
+`.claude/` — it will be silently invisible. After any change under `.claude/`, run
+`python .claude/skills/validate-config/scripts/validate_config.py` and require exit 0.
+
 ## Terminology
 
 `.claude/GLOSSARY.md` is the single source of truth for names. Key terms:

@@ -1,6 +1,7 @@
 ---
 name: generate-workflow
 description: Create and generate new orchestration workflows for the .claude harness. Scaffolds a workflow YAML from the template, validates it, and registers it in registry.yml. Use when the user asks to create, generate, add, or edit a workflow, cycle, pipeline, route, or the registry.
+allowed-tools: Read, Write, Edit, Bash
 ---
 
 # Generate Workflow

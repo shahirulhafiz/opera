@@ -1,0 +1,33 @@
+---
+description: Where harness capabilities (skills, agents, workflows) must live so the validator and orchestrator discover them
+alwaysApply: true
+---
+
+# Harness capability placement
+
+The harness and its `validate-config` script only discover capabilities under
+`.claude/`. Anything placed elsewhere is invisible to the orchestrator, the
+agents, and the validator — so it silently "breaks" even though the file exists.
+
+## Rules
+
+- **Skills** → `.claude/skills/<name>/SKILL.md` (the validator scans
+  `.claude/skills/*/SKILL.md`; these are also surfaced to Cursor).
+- **Agents** → `.claude/agents/<name>.md`.
+- **Workflows** → `.claude/workflows/<id>.yml` + a route in `registry.yml`.
+- **Never** put a harness skill/agent/workflow in `.cursor/skills/`,
+  `.cursor/`, `~/.cursor/`, or any path outside `.claude/`. `.cursor/rules/` is
+  only for Cursor rules like this one.
+- After adding or moving anything under `.claude/`, run the validator and require
+  exit 0: `python .claude/skills/validate-config/scripts/validate_config.py`.
+
+## Example
+
+```
+# ❌ BAD — invisible to the harness/validator (skills: count won't include it,
+#          and a workflow step `skill: generate-workflow` fails validation)
+.cursor/skills/generate-workflow/SKILL.md
+
+# ✅ GOOD — discovered by the validator and referenceable by agents/workflows
+.claude/skills/generate-workflow/SKILL.md
+```
