@@ -1,5 +1,9 @@
 # Project Documentation Structure
 
+> **New to the harness?** Read the [Harness Guide](harness-guide.md) first — it
+> explains the concepts and terminology (workflow, step, agent, gate, tiers) in
+> plain language. This file covers the *project* documentation layout below.
+
 ## Overview
 
 Phased development system where each phase produces three document sets: scoped spec (what), implementation plan (how), and completion report (learnings).

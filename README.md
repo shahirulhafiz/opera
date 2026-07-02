@@ -25,8 +25,13 @@ Just describe the work. Routing is automatic:
   matching workflow from [.claude/workflows/registry.yml](.claude/workflows/registry.yml).
   Since the registry ships routeless, it runs the built-in **ad-hoc route**:
   `implementer → code-reviewer + test-expert → debugger`.
-- **Mention a "workflow / cycle / pipeline / route"** → the `workflow-author`
-  agent scaffolds it from the template, validates it, and registers it.
+- **Mention a "workflow"** (aka *cycle* / *pipeline* / *route*) → the
+  `workflow-author` agent scaffolds it from the template, validates it, and
+  registers it.
+
+> **New to the terms?** See the plain-language [Harness Guide](docs/harness-guide.md).
+> The canonical quick-reference is [.claude/GLOSSARY.md](.claude/GLOSSARY.md);
+> **workflow** is the canonical noun ("cycle"/"pipeline" are synonyms).
 
 ## What's in the box
 
@@ -35,10 +40,10 @@ Just describe the work. Routing is automatic:
 - **Skills** (`.claude/skills/`): `author-workflow`, `validate-config`,
   `execute-plan`, `tdd-repro`, `monitor-logic`, `log-parser`.
 - **Workflows** (`.claude/workflows/`): `registry.yml` (routing source of truth,
-  routeless by default), `_template.yml` (copy-to-create a cycle), and
+  routeless by default), `_template.yml` (copy-to-create a workflow), and
   [README.md](.claude/workflows/README.md) (schema + robustness rules).
 
-## Author a cycle
+## Author a workflow
 
 1. Copy `.claude/workflows/_template.yml` to `.claude/workflows/{id}.yml` and fill
    in `match` + `steps` (each `agent`/`skill` must exist; gated steps need a

@@ -7,6 +7,10 @@ fixed, gated sequence. No `@agent` or skill tagging. New workflows are added
 declaratively — one YAML file + one registry entry — with **no change to the
 orchestrator**.
 
+> **Terminology:** `.claude/GLOSSARY.md` is the source of truth for what things
+> are called. **workflow** is the canonical noun ("cycle"/"pipeline" are human
+> synonyms only).
+
 > **How this executes:** this is *not* a compiled engine. `registry.yml`, the
 > workflow YAMLs, and fields like `match`, `on_complete`, and `max_retries` are
 > conventions the `orchestrator` (an LLM) reads and follows via its prompt. The
@@ -16,8 +20,8 @@ orchestrator**.
 
 | File | Role |
 |------|------|
-| `registry.yml` | Routing source of truth: `id`, `workflow`, `description`, `match.intent`, `priority`, `enabled`, plus `fallback: adhoc`. Ships with **no routes** — every request uses the ad-hoc fallback until you author a cycle. |
-| `_template.yml` | Copy-to-create a new cycle. `_`-prefixed files are **non-routable**. |
+| `registry.yml` | Routing source of truth: `id`, `workflow`, `description`, `match.intent`, `priority`, `enabled`, plus `fallback: adhoc`. Ships with **no routes** — every request uses the ad-hoc fallback until you author a workflow. |
+| `_template.yml` | Copy-to-create a new workflow. `_`-prefixed files are **non-routable**. |
 
 No concrete workflow ships by default; author one with the `workflow-author`
 agent (or by hand from `_template.yml`). Agents live in `.claude/agents/`;
@@ -37,13 +41,14 @@ script.
 
 ```yaml
 name: Human-readable name
-description: What this cycle accomplishes.
+description: What this workflow accomplishes.
 match:
   intent: [keyword, ...]     # routing keywords
   priority: 50               # higher wins ties
 steps:
   - id: unique-step-id
-    agent: agent-name        # must exist under .claude/agents/
+    type: agent|manual       # optional; default `agent`. `manual` escalates to the user
+    agent: agent-name        # required for `agent` steps; must exist under .claude/agents/
     skill: skill-name        # optional; must exist under .claude/skills/
     action: "What to do"
     requires: [step-id, ...] # dependencies
@@ -58,6 +63,14 @@ steps:
       APPROVE: { next: other-step }
       REVISE: { next: this-or-earlier-step }
 ```
+
+### Step types
+
+Every step has a `type` (default **`agent`**):
+
+- **`agent`** — the orchestrator spawns `agent` (optionally using `skill`) to do the work.
+- **`manual`** — the orchestrator **pauses and escalates to the user** (a decision,
+  approval, or destructive action). No `agent`; use `action` to state what's needed.
 
 ### Verdict contract
 
@@ -77,11 +90,11 @@ treated as a failure (see robustness rules).
   route failures to `debugger`, re-run capped by `max_retries`.
 - **Recursion guard** — no step may spawn `orchestrator` or `workflow-author`.
 
-## Authoring a custom cycle
+## Authoring a custom workflow
 
 Two ways, both without touching the orchestrator:
 
-- **Ask the AI:** "add a `<name>` cycle that does X → Y → Z" — the
+- **Ask the AI:** "add a `<name>` workflow that does X → Y → Z" — the
   `workflow-author` agent scaffolds and registers it.
 - **By hand:** copy `_template.yml` to `.claude/workflows/{id}.yml`, fill `match`
   + `steps` (each `agent`/`skill` must exist; gated steps need a verdict
