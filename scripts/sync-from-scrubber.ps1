@@ -59,7 +59,11 @@ Write-Host "Fetching '$Remote'..." -ForegroundColor Cyan
 Invoke-Git fetch $Remote
 
 # Report divergence before merging.
-$counts = (& git rev-list --left-right --count "HEAD...$ref").Trim() -split '\s+'
+$revList = & git rev-list --left-right --count "HEAD...$ref"
+if ($LASTEXITCODE -ne 0) {
+    throw "git rev-list --left-right --count 'HEAD...$ref' failed with exit code $LASTEXITCODE"
+}
+$counts = $revList.Trim() -split '\s+'
 Write-Host "Current branch '$currentBranch' is $($counts[0]) ahead, $($counts[1]) behind '$ref'." -ForegroundColor Yellow
 
 Write-Host "Merging '$ref' into '$currentBranch'..." -ForegroundColor Cyan
